@@ -52,8 +52,6 @@ public class ApiReceiveStepConfiguration {
                 .reader(targetProductItemReader(targetProductRepository))
                 .processor(compositeProcessor())
                 .writer(targetItemWriter())
-                .faultTolerant()
-                .skipPolicy(new DuplicateKeySkipper())
                 .build();
     }
 
@@ -112,12 +110,8 @@ public class ApiReceiveStepConfiguration {
     }
     @Bean
     public ItemWriter<List<ApiReceiveRaw>> targetItemWriter() {
-
         ItemWriter<List<ApiReceiveRaw>> objectJpaListWriter = new BatchListWriter<>(batchItemWriter());
-
         return objectJpaListWriter;
     }
-
-
 }
 

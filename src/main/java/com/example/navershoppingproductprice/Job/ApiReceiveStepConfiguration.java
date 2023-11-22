@@ -7,10 +7,11 @@ import com.example.navershoppingproductprice.Entity.ApiReceiveRaw;
 import com.example.navershoppingproductprice.Entity.TargetProduct;
 import com.example.navershoppingproductprice.Mapper.TargetProductMapper;
 import com.example.navershoppingproductprice.Repository.TargetProductRepository;
-import com.example.navershoppingproductprice.Utility.DuplicateKeySkipper;
 import com.example.navershoppingproductprice.Utility.BatchListWriter;
+import com.example.navershoppingproductprice.Utility.DuplicateKeySkipper;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -18,9 +19,7 @@ import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.data.RepositoryItemReader;
-import org.springframework.batch.item.database.ItemPreparedStatementSetter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.context.annotation.Bean;
@@ -29,18 +28,19 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import static com.example.navershoppingproductprice.Code.RequestCommonCode.PAGING_COUNT;
+
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class ApiReceiveStepConfiguration {
     private final NaverApiReceive apiReceive;
     private final TargetProductMapper targetProductMapper;
-    private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
     @Bean
     public Step targetProductReceiveStep(JobRepository jobRepository,
@@ -79,8 +79,21 @@ public class ApiReceiveStepConfiguration {
     @Bean
     public ItemProcessor<TargetProduct, List<ApiReceiveItem>> targetItemReceiveProcessor() {
         return (TargetProduct target) -> {
-            ApiReceiveResponse apiReceiveResponse = apiReceive.requestFromEntity(target, 1);
-            return apiReceiveResponse.getItems();
+            List<ApiReceiveItem> resultList = new ArrayList<>();
+            int maxPageLength = 1;
+            int offsetIndex = 1;
+            while(true){
+                if(maxPageLength < offsetIndex || offsetIndex > 10) break; //api 호출 수 제한 관계로 그냥 10페이지까지만 받기로함
+                ApiReceiveResponse apiReceiveResponse = apiReceive.requestFromEntity(target, offsetIndex);
+                int totalCount = Integer.parseInt(apiReceiveResponse.getTotal());
+                resultList.addAll(apiReceiveResponse.getItems());
+                maxPageLength = (int)Math.ceil((double)totalCount / PAGING_COUNT);
+                log.info("총 건수 : {} 현재 offset : {} 페이징건수 : {} 최대 페이지수 : {}",totalCount,offsetIndex,PAGING_COUNT,maxPageLength);
+                offsetIndex++;
+                Thread.sleep(500); //혹시모른 스레드 블록을 위해
+            }
+
+            return resultList;
         };
     }
 

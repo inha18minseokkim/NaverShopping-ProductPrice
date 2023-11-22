@@ -13,6 +13,8 @@ import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import static com.example.navershoppingproductprice.Code.RequestCommonCode.PAGING_COUNT;
+
 @Service
 @Slf4j
 public class NaverApiReceive {
@@ -23,10 +25,9 @@ public class NaverApiReceive {
 
     private static final String ENDPOINTURL = "https://openapi.naver.com/v1/search/shop.json";
     public ApiReceiveResponse requestFromEntity(TargetProduct targetProduct,Integer offset) {
-        log.info(naverId);
-        log.info(secret);
+
         UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(ENDPOINTURL)
-                .queryParam("display",100)
+                .queryParam("display",PAGING_COUNT)
                 .queryParam("start",offset)
                 .queryParam("query",targetProduct.getQueryString().replaceAll(" ","%20"))
                 .queryParam("dataType","JSON");
